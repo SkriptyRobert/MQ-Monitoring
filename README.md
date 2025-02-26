@@ -1,4 +1,4 @@
-IBM MQ Monitoring – README
+IBM MQ Monitoring 
 
 📌 IBM MQ – Klíčové pojmy a architektura
 
