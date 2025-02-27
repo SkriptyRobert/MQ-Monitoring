@@ -1,0 +1,20 @@
+**runmqsc QM1 
+    Interaktivni rezim pro zadavani prikazu.
+**Start admin channelu pro vzdalenou komunikaci (odhaduji, ze toto ma kazdy server nastaven)
+     START CHANNEL(DEV.ADMIN.SVRCONN)
+**Channel status
+     DISPLAY CHANNEL(DEV.ADMIN.SVRCONN) TYPE(SVRCONN)
+**DEV.ADMIN.SVRCONN nastaveni pristupu (tento prikaz namapuje local usera Linuxu)
+     SET CHLAUTH(DEV.ADMIN.SVRCONN) TYPE(USERMAP) CLNTUSER(pesourob) MCAUSER(mqm)
+**Defince opravneni
+     SET AUTHREC PROFILE('QMGR') PRINCIPAL('pesourob') + 
+    ACTION(INQ) + 
+    OBJTYPE(QMGR)
+--------------------
+SET AUTHREC PROFILE('QUEUE') PRINCIPAL('pesourob') + 
+    ACTION(INQ) + 
+    OBJTYPE(QUEUE)
+--------------------
+SET AUTHREC PROFILE('QUEUE') PRINCIPAL('pesourob') + 
+    ACTION(INQ) + 
+    OBJTYPE(QUEUE)
