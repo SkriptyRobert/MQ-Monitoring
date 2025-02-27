@@ -53,6 +53,8 @@
 
 Tento návod popisuje instalaci IBM MQ Clienta a knihovny `pymqi` pro monitorování IBM MQ.
 
+https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/
+
 ### 1. Nastavení proměnných prostředí
 
 Nejprve nastavíme potřebné proměnné prostředí:
