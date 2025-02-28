@@ -2,6 +2,8 @@
 
 ## 📌 IBM MQ – Klíčové pojmy a architektura
 
+https://www.youtube.com/watch?v=ynjc5GMQeRA
+
 ### 🔹 Základní pojmy
 - **Queue Manager (QM)** – hlavní součást IBM MQ, spravuje a zpracovává zprávy v různých frontách.
 - **Queue (Fronta)** – místo, kam aplikace posílají a odkud přijímají zprávy.
