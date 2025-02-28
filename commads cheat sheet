@@ -1,20 +1,27 @@
 **runmqsc QM1 
-    Interaktivni rezim pro zadavani prikazu.
+
+    Interaktivni rezim pro zadavani prikazu primo pod QM
+
 **Start admin channelu pro vzdalenou komunikaci (odhaduji, ze toto ma kazdy server nastaven)
      START CHANNEL(DEV.ADMIN.SVRCONN)
+
 **Channel status
      DISPLAY CHANNEL(DEV.ADMIN.SVRCONN) TYPE(SVRCONN)
+
 **DEV.ADMIN.SVRCONN nastaveni pristupu (tento prikaz namapuje local usera Linuxu)
+
+//Když se připojíme jako pesourob, systém nás interně vidí jako uživatele mqm, který má plná oprávnění
+TYPE(USERMAP) definuje mapování uživatelů
+MCAUSER('mqm') specifikuje cílového MQ uživatele
+
      SET CHLAUTH(DEV.ADMIN.SVRCONN) TYPE(USERMAP) CLNTUSER(pesourob) MCAUSER(mqm)
-**Defince opravneni
-     SET AUTHREC PROFILE('QMGR') PRINCIPAL('pesourob') + 
-    ACTION(INQ) + 
-    OBJTYPE(QMGR)
---------------------
-SET AUTHREC PROFILE('QUEUE') PRINCIPAL('pesourob') + 
-    ACTION(INQ) + 
-    OBJTYPE(QUEUE)
---------------------
-SET AUTHREC PROFILE('QUEUE') PRINCIPAL('pesourob') + 
-    ACTION(INQ) + 
-    OBJTYPE(QUEUE)
+     SET CHLAUTH('QM*.SVRCONN') TYPE(USERMAP) CLNTUSER('pesourob') USERSRC(MAP) MCAUSER('mqm')
+
+**Nastavení CHLAUTH pravidel pro všechny QM*.SVRCONN kanály:
+
+     SET CHLAUTH('QM*.SVRCONN') TYPE(ADDRESSMAP) ADDRESS('*') USERSRC(CHANNEL) CHCKCLNT(ASQMGR)
+     ALTER AUTHINFO(SYSTEM.DEFAULT.AUTHINFO.IDPWOS) AUTHTYPE(IDPWOS) CHCKCLNT(OPTIONAL)
+
+#CHCKCLNT(ASQMGR) znamená, že kontrola klienta se řídí nastavením Queue Manageru
+
+     ALTER AUTHINFO(SYSTEM.DEFAULT.AUTHINFO.IDPWOS) AUTHTYPE(IDPWOS) CHCKCLNT(OPTIONAL)" | sudo -u mqm /opt/mqm/bin/
