@@ -1,0 +1,164 @@
+# IBM MQ Monitoring Script v3 - Configuration File
+# This file contains settings for IBM MQ monitoring
+
+# Global settings for the monitoring script
+global:
+  # Encoding used for MQ communication (default: utf-8)
+  encoding: "utf-8"
+  # Temporary directory for script operations (null = use system default)
+  temp_dir: null
+
+# Platform specific settings for different operating systems
+platform_specific:
+  unix:
+    # SSL/TLS key repository location for Unix systems
+    ssl_key_repository: "/var/mqm/ssl/key"
+    # Log directory for Unix systems
+    log_dir: "/var/log/mqmonitor"
+  windows:
+    # SSL/TLS key repository location for Windows systems (can use environment variables)
+    ssl_key_repository: "%MQDATA%\\ssl\\key"
+    # Log directory for Windows systems (can use environment variables)
+    log_dir: "%PROGRAMDATA%\\MQMonitor\\logs"
+
+# List of MQ servers to monitor
+mq_servers:
+  # Example server configuration
+  - name: "myplayground_mq"              # Unique name for the server
+    host: "10.14.43.201"                 # Hostname or IP address
+    port: 1414                           # Default port for MQ communication
+    # SSL/TLS configuration for server level (optional)
+    #ssl: false                           # Enable/disable SSL/TLS
+    #ssl_config:                          # SSL/TLS specific configuration
+    #  cipher_spec: "TLS_RSA_WITH_AES_128_CBC_SHA256"  # SSL cipher specification
+    #  key_repository: null               # Optional override of platform SSL key repository
+    #  cert_label: "ibmwebspheremq"      # Certificate label to use
+    
+    # List of Queue Managers to monitor on this server
+    queue_managers:
+      # First Queue Manager configuration
+      - name: "QM1"                      # Queue Manager name
+        channel: "QM1.SVRCONN"          # Channel name for connection
+        user: "pesourob"                # Username for authentication
+        #password: "your_password"        # Password for authentication (recommended to use environment variable)
+        # SSL/TLS configuration for QM level (optional, overrides server level)
+        #ssl: false                      # Enable/disable SSL/TLS  
+        #ssl_config:                     # SSL/TLS specific configuration
+        #  cipher_spec: "TLS_RSA_WITH_AES_128_CBC_SHA256"  # SSL cipher specification
+        #  cert_label: "ibmwebspheremq"      # Certificate label to use
+      
+        # Monitoring patterns
+        queues_to_monitor:               # List of queue patterns to monitor
+          - "SYSTEM.ADMIN.COMMAND.*"     # Supports wildcards
+          - "APP.*"                      # Example for application queues
+        channels_to_monitor:             # List of channel patterns to monitor
+          - "*"                          # Monitor all channels
+      
+      # Second Queue Manager configuration
+      - name: "QM2"
+        channel: "QM2.SVRCONN"
+        user: "pesourob"
+        port: 1415                       # Override server port if needed
+        queues_to_monitor:
+          - "SYSTEM.ADMIN.COMMAND.*"
+        channels_to_monitor:
+          - "QM2.*"                      # Monitor only QM2 specific channels
+
+# Output settings for monitoring results
+output:
+  format: "table"                        # Output format: "table", "console", "json", "csv"
+  colored: true                          # Enable/disable colored output
+  logging:
+    enabled: true                        # Enable/disable logging to file
+    directory: "./logs"                  # Log directory (relative or absolute path)
+    filename: "mq_monitor_v3.log"        # Log file name
+    max_size_mb: 10                      # Maximum log file size in MB
+    backup_count: 5                      # Number of backup files to keep
+
+# Channel monitoring configuration
+channels_monitoring:
+  global:                               # Global settings for all channels
+    required_status: "RUNNING"          # Expected channel status
+    inactive_warning: true              # Warning if channel is inactive
+    max_connections: 100                # Maximum allowed connections
+    warning_connections: 80             # Warning threshold for connections
+    messages:                          # Alert messages configuration
+      wrong_status:
+        severity: "WARNING"
+        text: "Channel is not in required state"
+      max_connections:
+        severity: "CRITICAL"
+        text: "Maximum number of connections exceeded"
+      high_connections:
+        severity: "WARNING"
+        text: "High number of connections"
+      inactive:
+        severity: "WARNING"
+        text: "Channel is inactive"
+
+# Queue monitoring configuration
+queues_monitoring:
+  global:                              # Global settings for all queues
+    max_depth: 5000                    # Maximum queue depth
+    warning_depth: 1000                # Warning threshold for queue depth
+    max_depth_percent: 90              # Maximum queue utilization percentage
+    warning_depth_percent: 70          # Warning threshold for utilization
+    stuck_queue_warning: true          # Warning if queue has messages but no consumers
+    required_consumers: 1              # Minimum required number of consumers
+    messages:                         # Alert messages configuration
+      max_depth:
+        severity: "CRITICAL"
+        text: "Maximum queue depth exceeded"
+      high_depth:
+        severity: "WARNING"
+        text: "High queue depth"
+      max_depth_percent:
+        severity: "CRITICAL"
+        text: "Maximum queue utilization exceeded"
+      high_depth_percent:
+        severity: "WARNING"
+        text: "High queue utilization"
+      stuck_messages:
+        severity: "WARNING"
+        text: "Queue contains messages but has no active consumers"
+      no_consumers:
+        severity: "WARNING"
+        text: "Insufficient number of consumers"
+
+  # Specific queue configurations (override global settings)
+  specific:
+    # System command queue configuration
+    #SYSTEM.ADMIN.COMMAND.QUEUE:
+    #  max_depth: 5000
+    #  warning_depth: 4000
+    #  max_depth_percent: 80
+    #  warning_depth_percent: 60
+    #  stuck_queue_warning: false
+    #  messages:
+    #    max_depth:
+    #      severity: "CRITICAL"
+    #      text: "System queue exceeded maximum depth"
+
+    # System event queue configuration
+    #SYSTEM.ADMIN.QMGR.EVENT:
+    #  required_consumers: 0             # System queues may not need consumers
+    #  messages:
+    #    no_consumers:
+    #      severity: "OK"
+    #      text: "System queue without consumers - normal state"
+
+    # Example application queue configuration
+    #APP.PRIORITY.QUEUE:
+    #  max_depth: 1000
+    #  warning_depth: 500
+    #  max_depth_percent: 70
+    #  warning_depth_percent: 50
+    #  required_consumers: 2
+    #  stuck_queue_warning: true
+    #  messages:
+    #    max_depth_percent:
+    #      severity: "CRITICAL"
+    #      text: "Priority queue is 70% full, overflow risk!"
+    #    no_consumers:
+    #      severity: "CRITICAL"
+    #      text: "Priority queue doesn't have enough consumers!" 
