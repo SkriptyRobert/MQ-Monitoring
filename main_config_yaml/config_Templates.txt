@@ -1,0 +1,194 @@
+# IBM MQ Monitoring Script v3 - Configuration Template
+# This template contains all available configuration options with descriptions
+
+# Global settings for the monitoring script
+global:
+  # Encoding used for MQ communication (default: utf-8)
+  encoding: "utf-8"
+  # Temporary directory for script operations (null = use system default)
+  temp_dir: null
+
+# Platform specific settings
+platform_specific:
+  unix:
+    # SSL/TLS key repository location for Unix systems
+    ssl_key_repository: "/var/mqm/ssl/key"
+    # Log directory for Unix systems
+    log_dir: "/var/log/mqmonitor"
+  windows:
+    # SSL/TLS key repository location for Windows systems
+    ssl_key_repository: "%MQDATA%\\ssl\\key"
+    # Log directory for Windows systems 
+    log_dir: "%PROGRAMDATA%\\MQMonitor\\logs"
+
+# QUES SORTING
+
+queues_to_monitor:
+  - "QM1.*"
+  - "SYSTEM.ADMIN.*"
+  - "APP.*"
+  - "CUSTOM.*"
+
+# List of MQ servers to monitor
+mq_servers:
+  # Example server configuration
+  - name: "production_mq"              # Unique server name
+    host: "mq.company.com"            # Hostname or IP address
+    port: 1414                        # Port number (default: 1414)
+    # SSL/TLS configuration for server level
+    ssl: false                        # Enable/disable SSL/TLS
+    ssl_config:                       # SSL/TLS specific settings
+      cipher_spec: "TLS_RSA_WITH_AES_128_CBC_SHA256"
+      cert_label: "ibmwebspheremq"
+    
+    # Queue Manager configurations
+    queue_managers:
+      - name: "QM1"                   # Queue Manager name
+        channel: "SYSTEM.ADMIN.SVRCONN" # Channel name
+        user: "mqadmin"               # Username for authentication
+        password: "password"          # Password (use environment variables in production)
+        # Optional: Override server port for specific QM
+        port: 1414
+        
+        # Monitoring patterns
+        queues_to_monitor:            # Queue patterns to monitor
+          - "APP.*"                   # All application queues
+          - "SYSTEM.ADMIN.*"          # System admin queues
+        channels_to_monitor:          # Channel patterns to monitor
+          - "*"                       # All channels
+          - "!SYSTEM.*"              # Exclude system channels
+
+# Output configuration
+output:
+  format: "table"                     # Output format: table, console, json, csv
+  colored: true                       # Enable colored output
+  logging:
+    enabled: true                     # Enable logging to file
+    directory: "./logs"               # Log directory
+    filename: "mq_monitor.log"        # Log filename
+    max_size_mb: 10                   # Maximum log file size
+    backup_count: 5                   # Number of backup files to keep
+
+# Channel monitoring configuration
+channels_monitoring:
+  global:                            # Global settings for all channels
+    required_status: "RUNNING"       # Expected channel status
+    inactive_warning: true           # Warning for inactive channels
+    max_connections: 100             # Maximum allowed connections
+    warning_connections: 80          # Warning threshold for connections
+    messages:                        # Alert message configuration
+      wrong_status:
+        severity: "WARNING"
+        text: "Channel {channel_name} is not in required state {required_status}"
+      max_connections:
+        severity: "CRITICAL"
+        text: "Channel {channel_name} exceeded maximum connections ({current}/{max})"
+      high_connections:
+        severity: "WARNING"
+        text: "Channel {channel_name} has high connection count ({current}/{warning})"
+      inactive:
+        severity: "WARNING"
+        text: "Channel {channel_name} is inactive"
+
+# Queue monitoring configuration
+queues_monitoring:
+  global:                           # Global settings for all queues
+    max_depth: 5000                 # Maximum queue depth
+    warning_depth: 1000             # Warning threshold for depth
+    max_depth_percent: 90           # Maximum utilization percentage
+    warning_depth_percent: 70       # Warning threshold for utilization
+    stuck_queue_warning: true       # Warning if queue has messages but no consumers
+    required_consumers: 1           # Minimum required number of consumers
+    messages:                       # Alert message configuration
+      max_depth:
+        severity: "CRITICAL"
+        text: "Queue {queue_name} exceeded maximum depth of {max_depth}"
+      high_depth:
+        severity: "WARNING"
+        text: "Queue {queue_name} has high depth ({current}/{warning})"
+      max_depth_percent:
+        severity: "CRITICAL"
+        text: "Queue {queue_name} utilization exceeded {max_percent}%"
+      high_depth_percent:
+        severity: "WARNING"
+        text: "Queue {queue_name} utilization at {current_percent}%"
+      stuck_messages:
+        severity: "WARNING"
+        text: "Queue {queue_name} has messages but no active consumers"
+      no_consumers:
+        severity: "WARNING"
+        text: "Queue {queue_name} has insufficient consumers (required: {required})"
+
+  # Specific queue configurations (override global settings)
+  specific:
+
+    # Example: High-priority queue configuration
+
+    #Příklad rozšírení alertu pro určitou queue:
+    APP.BATCH.QUEUE:
+      max_depth: 10000
+      warning_depth: 8000
+      max_depth_percent: 90
+      warning_depth_percent: 75
+      required_consumers: 1
+      stuck_queue_warning: false
+  
+    APP.BATCH.QUEUE:
+      max_depth: 10000
+      warning_depth: 8000
+      max_depth_percent: 90
+      warning_depth_percent: 75
+      required_consumers: 1
+      stuck_queue_warning: false
+      messages:                   # Přidáme sekci messages
+    max_depth_percent:            # Pro kontrolu procentuálního zaplnění
+      severity: "CRITICAL"        # Nastavíme CRITICAL severitu
+      text: "Batch fronta je zaplněna na 90%, hrozí přetečení! Restartuj!!"    # Vlastní text zprávy
+    high_depth_percent:           # Pro varování při vysokém zatížení
+      severity: "WARNING"
+      text: "Batch fronta má vysoké zatížení (75%)"
+    max_depth:                    # Pro absolutní limit zpráv
+      severity: "CRITICAL"
+      text: "Batch fronta překročila limit 10000 zpráv!"
+
+  messages:                       # Přidáme sekci messages
+    max_depth_percent:            # Pro kontrolu procentuálního zaplnění
+      severity: "CRITICAL"        # Nastavíme CRITICAL severitu
+      text: "Batch fronta je zaplněna na 90%, hrozí přetečení! Restartuj!!"    # Vlastní text zprávy
+    high_depth_percent:           # Pro varování při vysokém zatížení
+      severity: "WARNING"
+      text: "Batch fronta má vysoké zatížení (75%)"
+    max_depth:                    # Pro absolutní limit zpráv
+      severity: "CRITICAL"
+      text: "Batch fronta překročila limit 10000 zpráv!"
+    APP.PRIORITY.QUEUE:
+      max_depth: 1000
+      warning_depth: 500
+      required_consumers: 2
+      messages:
+        no_consumers:
+          severity: "CRITICAL"
+          text: "Priority queue requires minimum 2 active consumers!"
+
+    # Example: System event queue configuration
+    SYSTEM.ADMIN.QMGR.EVENT:
+      required_consumers: 0          # System queues may not need consumers
+      messages:
+        no_consumers:
+          severity: "OK"
+          text: "System queue without consumers - normal state"
+
+    # Example: Dead letter queue configuration
+    SYSTEM.DEAD.LETTER.QUEUE:
+      max_depth: 100
+      warning_depth: 50
+      messages:
+        max_depth:
+          severity: "CRITICAL"
+          text: "Dead letter queue exceeded maximum depth!"
+        high_depth:
+          severity: "WARNING"
+          text: "Dead letter queue is filling up!"
+
+For configuration updates, suggestions, or custom modifications, please contact:
+robert.pesout@tietoevry.com 
