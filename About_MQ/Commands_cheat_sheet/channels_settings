@@ -1,0 +1,17 @@
+1. Vytvoření nového SVRCONN kanálu
+    echo "DEFINE CHANNEL(NAZEV_KANALU) CHLTYPE(SVRCONN) TRPTYPE(TCP)" | runmqsc NAZEV_QM
+
+2. Nastavení MCAUSER pro kanál
+    echo "ALTER CHANNEL(QM1.SVRCONN) CHLTYPE(SVRCONN) MCAUSER('pesourob')" | runmqsc QM1
+
+3. Přidání oprávnění pro uživatele ke queue manageru
+    setmqaut -m NAZEV_QM -t qmgr -p JMENO_UZIVATELE +connect +inq
+
+4. Přidání oprávnění pro přístup ke kanálu 
+    setmqaut -m NAZEV_QM -t channel -n NAZEV_KANALU -p JMENO_UZIVATELE +connect +inq
+
+5. Ověření nastavení kanálu
+    echo "DISPLAY CHANNEL(NAZEV_KANALU) ALL" | runmqsc NAZEV_QM
+
+6. Testování připojení
+    python3 test_mq_connection.py 10.14.43.201 1414 QM1 QM1.SVRCONN RóbertPešout heslo
