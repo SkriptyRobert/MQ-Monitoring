@@ -1,0 +1,63 @@
+1. zkontrolujeme aktuální nastavení SSL na kanálu:
+    echo 'DISPLAY CHANNEL(QM1.SVRCONN) SSLCIPH SSLCAUTH' | runmqsc QM1
+
+2. Vytvořit (key repository) pro QM1:
+    cd /var/mqm/qmgrs/QM1/ssl && runmqckm -keydb -create -db key.kdb -pw student -type cms -stash
+    on newer version IBM MQ runmqakm -keydb -create -db key.kdb -pw student -type cms -stash
+    
+    ***-keydb -create: Vytvoří novy keystore (key database)
+        -db key.kdb: Jméno souboru bude "key.kdb"
+        -pw student: Heslo pro přístup ke keystore bude "student"
+        -type cms: Typ klíčenky bude CMS (Certificate Management System)
+        -stash: Vytvoří soubor .sth, který obsahuje zašifrované heslo ke keystore (aby ho MQ mohlo automaticky pouzit)
+
+3. SELF SIGNED Certificate for QM1
+
+    cd /var/mqm/qmgrs/QM1/ssl && \
+    runmqakm -cert -create -db key.kdb -pw student -label QM1Cert -dn 'CN=QM1,O=TietoEvry,C=CZ' -size 2048 -x509version 3 -expire 365
+
+4. create USER Certificate for client 
+
+    cd /var/mqm/qmgrs/QM1/ssl && \
+    runmqakm -cert -create -db key.kdb -pw student -label pesourobCert -dn 'CN=pesourob,O=TietoEvry,C=CZ' -size 2048 -x509version 3 -expire 365
+
+5. EXPORT Certificates FOR Queue manager
+    runmqakm -cert -extract -db key.kdb -pw student -label QM1Cert -target QM1Cert.arm
+
+-cert -extract - říká, že chceme exportovat certifikát
+-db key.kdb - specifikuje zdrojovy keystore, ktery jsme vytvořili v předchozím kroku
+-pw student - heslo ke keystore
+-label QM1Cert - název certifikátu, který chceme exportovat (tento label jsme použili při vytváření certifikátu)
+-target QM1Cert.arm - cílový soubor, kam se certifikát uloží. Přípona .arm znamená "ASCII-armored", což je textový formát certifikátu
+
+    [mqm@ansible2 ssl]$ echo $PWD && ll
+        /var/mqm/qmgrs/QM1/ssl
+        total 28
+        -rw-------. 1 mqm mqm  1147 Mar  5 09:30 QM1Cert.arm
+        -rw-------. 1 mqm mqm    88 Mar  5 09:21 key.crl
+        -rw-------. 1 mqm mqm 10088 Mar  5 09:27 key.kdb
+        -rw-------. 1 mqm mqm    88 Mar  5 09:21 key.rdb
+        -rw-------. 1 mqm mqm   193 Mar  5 09:21 key.st
+
+6. EXPORT Certificate FOR client
+    runmqakm -cert -extract -db key.kdb -pw student -label pesourobCert -target pesourobCert.arm
+
+7. CONFIGURATION on CHANNEL QM1.SVRCONN for SSL comunication
+    echo 'ALTER CHANNEL(QM1.SVRCONN) CHLTYPE(SVRCONN) SSLCIPH(TLS_RSA_WITH_AES_128_CBC_SHA256) SSLCAUTH(REQUIRED)' | runmqsc QM1
+
+    command output
+             1 : ALTER CHANNEL(QM1.SVRCONN) CHLTYPE(SVRCONN) SSLCIPH(TLS_RSA_WITH_AES_128_CBC_SHA256) SSLCAUTH(REQUIRED)
+    AMQ8016I: IBM MQ channel changed.
+
+8. CREATE CLAUTH RECORDS FOR user whats maps Certificate on correct user.
+    echo "SET CHLAUTH('QM1.SVRCONN') TYPE(SSLPEERMAP) SSLPEER('CN=pesourob,O=TietoEvry,C=CZ') USERSRC(MAP) MCAUSER('pesourob')" | runmqsc QM1
+
+9 CREATE KEYSTORE ON CLIENT (Windows)
+    cd C:\ProgramData\IBM\MQ\ssl && runmqakm -cert -add -db client.kdb -pw student -label QM1Cert -file QM1Cert.arm
+
+10. CERTIFICATE import do keystore for QM1
+    runmqakm -cert -add -db client.kdb -pw student -label QM1Cert -file QM1Cert.arm -format ascii
+
+11. CERTIFICATE import do keystore for client user pesourob
+    runmqakm -cert -add -db client.kdb -pw student -label pesourobCert -file pesourobCert.arm -format ascii
+
