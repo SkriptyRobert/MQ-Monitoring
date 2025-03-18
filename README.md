@@ -1,9 +1,9 @@
 # IBM MQ Monitorovací Řešení
 ## Flexibilní Monitorovací Nástroj pro IBM MQ Infrastrukturu
 
-## 🌟 Klíčové Vlastnosti
+## Klíčové Vlastnosti
 
-### 💪 Výkonný Konfigurační Systém
+### Výkonný Konfigurační Systém
 - **Centralizovaná YAML Konfigurace**
   - Veškerá monitorovací nastavení na jednom místě
   - Čitelný formát
