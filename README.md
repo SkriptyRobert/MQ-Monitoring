@@ -1,144 +1,228 @@
-# IBM MQ Monitoring – README
+# IBM MQ Monitorovací Řešení
+## Flexibilní Monitorovací Nástroj pro IBM MQ Infrastrukturu
 
-## 📌 IBM MQ – Klíčové pojmy a architektura
+## 🌟 Klíčové Vlastnosti
 
-https://www.youtube.com/watch?v=ynjc5GMQeRA
+### 💪 Výkonný Konfigurační Systém
+- **Centralizovaná YAML Konfigurace**
+  - Veškerá monitorovací nastavení na jednom místě
+  - Čitelný formát
+  - Snadná údržba a verzování
 
-### 🔹 Základní pojmy
-- **Queue Manager (QM)** – hlavní součást IBM MQ, spravuje a zpracovává zprávy v různých frontách.
-- **Queue (Fronta)** – místo, kam aplikace posílají a odkud přijímají zprávy.
-- **Channel (Kanál)** – komunikační cesta mezi dvěma systémy nebo queue managery.
-- **Message (Zpráva)** – data přenášená mezi aplikacemi pomocí IBM MQ.
-- **Listener (Posluchač)** – proces, který čeká na spojení a přijímá zprávy.
+### 🎯 Přizpůsobitelné Monitorování
+- **Flexibilní Výběr Objektů**
+  - Monitorování specifických front pomocí vzorů
+  - Filtrování systémových front
+  - Monitorování kanálů pomocí zástupných znaků
 
-### 🔹 Jak to funguje?
-1. Aplikace 1 pošle zprávu do fronty (`PUT`).
-2. IBM MQ zprávu uchová v **queue manageru**.
-3. Aplikace 2 si zprávu vyzvedne (`GET`).
-4. Pokud příjemce neexistuje, zpráva může čekat až do jeho spuštění.
+### 🚨 Chytrý Systém Upozornění
+- **Konfigurovatelné Úrovně Závažnosti**
+  - Stavy OK, WARNING, CRITICAL, UNKNOWN
+  - Vlastní prahy pro každou komponentu
+  - Personalizované zprávy upozornění
 
-> 📌 **Výhoda IBM MQ:** Pokud příjemce neběží, zpráva se neztratí (pokud je persistentní).
+### 📊 Více Formátů Výstupu
+- **Vyberte si Preferovaný Formát**
+  - Tabulkový pohled pro přehlednost
+  - Konzolový výstup pro rychlé kontroly
+  - JSON pro integraci **Možnost předání dat Logstash, Fluentd a napojení dat na Kibana, Grafana, Elasticsearch **
+  - CSV pro reportování
 
----
+## 🔍 Příklad Rychlého Startu
 
-## 🔹 Jak se naše DEMO liší od produkce?
+### Základní Konfigurace
+```yaml
+# config_v3.yaml
+mq_servers:
+  - name: "produkcni_mq"
+    host: "mq.tamepere.fin" # nebo IP adresa
+    port: 1414
+    queue_managers:
+      - name: "QM1"
+        channel: "SYSTEM.ADMIN.SVRCONN"
+        queues_to_monitor:
+          - "APP.*"          # Všechny aplikační fronty
+          - "SYSTEM.ADMIN.*" # Systémové admin fronty
+```
 
-| **Funkce**             | **Naše DEMO (Docker)** | **Produkční IBM MQ** |
-|-----------------------|----------------------|---------------------|
-| **Queue Manager**     | `QM1` (jeden)        | Více QM pro HA     |
-| **Uživatelé & Role**  | `admin/passw0rd`     | LDAP, Kerberos, RBAC |
-| **Zabezpečení (TLS)** | ❌ Neaktivní         | ✅ Povinné šifrování |
-| **Trvalé zprávy**     | ❌ Volitelné         | ✅ Nutné pro HA |
-| **Monitoring**        | ❌ Ruční dotazy      | ✅ IBM Monitoring |
+### Konfigurace Vlastních Upozornění pro nastavení T3 specialistou 
+```yaml
+queues_monitoring:
+  global:
+    max_depth: 5000
+    warning_depth: 1000
+    messages:
+      max_depth:
+        severity: "CRITICAL"
+        text: "Fronta {queue_name} překročila maximální hloubku {max_depth} Proveď akce Xy!"
+```
 
-> 👉 **Chceš přidat bezpečnost a autentizaci do testovacího prostředí?** To bychom museli přidat TLS a správu uživatelů.
+## 📝 Příklady Výstupu
 
----
+### Tabulkový Formát
+```
++----------------+---------+------------------+
+| Component      | Status  | Message         |
++----------------+---------+------------------+
+| QM1            | OK      | Running         |
+| APP.QUEUE.1    | WARNING | High depth (80%)|
+| SYSTEM.CHANNEL | OK      | Active          |
++----------------+---------+------------------+
+```
 
-## 🔹 Co je součástí našeho testovacího prostředí?
-- ✔ **Queue Manager:** `QM1` (spravuje fronty)
-- ✔ **Dvě testovací fronty:** `DEV.QUEUE.1`, `DEV.QUEUE.2`
-- ✔ **Možnost posílat zprávy pomocí Pythonu**
-- ✔ **CLI příkazy pro kontrolu front**
-- ✔ **Automatické posílání zpráv (simulace trafficu)**
+### Konzolový Výstup
+```
+2024-03-15 10:30:15 [OK] QM1: Queue Manager is running normally
+2024-03-15 10:30:15 [WARNING] APP.QUEUE.1: Queue depth at 80% (4000/5000)
+2024-03-15 10:30:15 [CRITICAL] SYSTEM.DEAD.LETTER.QUEUE: Maximum depth exceeded
+```
 
----
+### JSON Formát
+```json
+{
+  "timestamp": "2024-03-15T10:30:15",
+  "queue_manager": "QM1",
+  "components": [
+    {
+      "name": "APP.QUEUE.1",
+      "type": "queue",
+      "status": "WARNING",
+      "metrics": {
+        "depth": 4000,
+        "max_depth": 5000
+      }
+    }
+  ]
+}
+```
 
-## ❌ Co chybí oproti produkci?
-- ❌ **TLS zabezpečení** (můžeme přidat, pokud chceš)
-- ❌ **Víc queue managerů pro HA**
-- ❌ **Alerty a logování**
+## 🛠 Pokročilé Funkce pro detailní nastavení určitých front a jejich vlatností T3 specialistou v config.yaml více info v confi_template.txt
 
-> 👉 **Chceš to rozšířit o bezpečnost a monitoring? Dej vědět! 🚀**
+### Dynamické Prahy
+```yaml
+queues_monitoring:
+  specific:
+    APP.PRIORITY.QUEUE:
+      max_depth: 1000
+      warning_depth: 500
+      required_consumers: 2
+      messages:
+        no_consumers:
+          severity: "CRITICAL"
+          text: "Priority queue requires minimum 2 active consumers!"
+```
 
-## Instalace IBM MQ Clienta
+### Konfigurace Logování
+```yaml
+output:
+  logging:
+    enabled: true
+    directory: "./logs"
+    filename: "mq_monitor.log"
+    max_size_mb: 10
+    backup_count: 5
+```
 
-Tento návod popisuje instalaci IBM MQ Clienta a knihovny `pymqi` pro monitorování IBM MQ.
+## 🔧 Technické Detaily
 
-https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/
+### Monitorovací Schopnosti
 
-### 1. Nastavení proměnných prostředí
+#### Monitorování Queue Manageru
+- Status: RUNNING, STOPPED, ERROR
+- Command levels
+- Overall health check: OK, WARNING, CRITICAL
 
-Nejprve nastavíme potřebné proměnné prostředí:
+#### Monitorování Kanálů
+- Status: RUNNING, STOPPED, INACTIVE
+- Connection count monitoring
+- Inactivity detection
+- Custom thresholds
 
+#### Monitorování Front
+- Depth monitoring
+- Consumer count
+- Utilization percentage
+- Stuck message detection
+- System queue differentiation
+
+### Bezpečnostní Funkce
+- Podpora SSL/TLS
+- Správa přihlašovacích údajů
+- Integrace řízení přístupu
+
+## 📈 Případy Použití
+
+### 1. Produkční Monitoring
+- Monitorování hloubky front v reálném čase
+- Sledování stavu kanálů
+- Sběr výkonnostních metrik
+
+### 2. Systémová Administrace
+- Kontroly zdraví Queue Manageru
+- Monitorování systémových front
+- Sledování využití zdrojů
+
+### 3. Podpora Aplikací
+- Monitorování aplikačních front
+- Kontroly dostupnosti konzumentů
+- Sledování toku zpráv
+
+## 🚀 Začínáme
+
+1. Instalace Požadavků:
 ```bash
-export MQ_INSTALLATION_PATH="/home/pesourob/mq-client"
-export PATH="$MQ_INSTALLATION_PATH/bin:$PATH"
-export LD_LIBRARY_PATH="$MQ_INSTALLATION_PATH/lib64:$LD_LIBRARY_PATH"
-export PYTHONPATH="$MQ_INSTALLATION_PATH/lib64:$PYTHONPATH"
+pip install pymqi pyyaml colorama tabulate
 ```
 
-Načtení nového profilu:
-
+2. Konfigurace Prostředí:
 ```bash
-source ~/.bashrc  # nebo source ~/.bash_profile
+# Nastavení proměnných prostředí (volitelné)
+export MQ_MONITORING_CONFIG=/cesta/k/config_v3.yaml
 ```
 
-Ověření správného nastavení:
-
+3. Spuštění Monitoru:
 ```bash
-echo $MQ_INSTALLATION_PATH
-```
-**Výstup:**
-```
-/home/pesourob/mq-client
+python mq_monitor_v3.py -c config_v3.yaml
 ```
 
-### 2. Ověření instalace IBM MQ Clienta
+## 📚 Dokumentace
 
-Spusť příkaz:
+Kompletní dokumentaci naleznete v [mq_monitor_v3.txt](mq_monitor_v3.txt)
 
-```bash
-dspmqver
-```
+## 🤝 Podpora
 
-**Očekávaný výstup:**
-```
-Name:        IBM MQ
-Version:     9.4.1.1
-Level:       p941-001-241129
-BuildType:   IKAP - (Production)
-Platform:    IBM MQ for Linux (x86-64 platform)
-Mode:        64-bit
-O/S:         Linux 5.14.0-503.26.1.el9_5.x86_64
-O/S Details: Rocky Linux 9.5 (Blue Onyx)
-InstName:    MQNI94L24112900P
-InstDesc:    IBM MQ V9.4.1.1 (Redistributable)
-Primary:     N/A
-InstPath:    /home/pesourob/mq-client
-DataPath:    /home/pesourob/IBM/MQ/data
-MaxCmdLevel: 941
-LicenseType: License not accepted
-ReleaseType: Continuous Delivery (CD)
-```
+Pro technickou podporu a požadavky na nové funkce kontaktujte:
+- Email: robert.pesout@tietoevry.com
 
-### 3. Instalace `pymqi`
+## 📋 Historie Verzí
 
-Jakmile je IBM MQ Client správně nastaven, můžeme nainstalovat knihovnu `pymqi`:
+### v3.0.0 (Aktuální)
+- Více formátů výstupu
+- Vylepšená podpora SSL/TLS
+- Vylepšené zpracování chyb
+- Vlastní konfigurace front
+- Pokročilý systém logování
 
-```bash
-pip3 install pymqi
-```
+## 🔒 Bezpečnostní Doporučení
 
-**Očekávaný výstup:**
-```
-Defaulting to user installation because normal site-packages is not writeable
-Collecting pymqi
-Downloading pymqi-1.12.11.tar.gz (91 kB)
-|████████████████████████████████| 91 kB 2.7 MB/s
-Installing build dependencies ... done
-Getting requirements to build wheel ... done
-Preparing metadata (pyproject.toml) ... done
-Building wheels for collected packages: pymqi
-Building wheel for pymqi (pyproject.toml) ... done
-Created wheel for pymqi: filename=pymqi-1.12.11-cp39-cp39-linux_x86_64.whl size=126366 sha256=092e8d34972e8bf0bcaa138c82a50332698f2bda4db58943fb406ce86a751355
-Stored in directory: /home/pesourob/.cache/pip/wheels/65/52/19/d7f548d571303b3a5c6ee2643376e9203f785d1e84202003f5
-Successfully built pymqi
-Installing collected packages: pymqi
-Successfully installed pymqi-1.12.11
-```
+1. Používejte proměnné prostředí pro citlivá data
+2. Povolte SSL/TLS pro všechna připojení
+3. Implementujte správné řízení přístupu
+4. Pravidelné bezpečnostní audity
 
-Tímto je instalace dokončena a můžeš začít pracovat s `pymqi` pro monitorování IBM MQ!
+## 💡 Osvědčené Postupy
 
+1. Začněte s minimálním monitorováním
+2. Postupně přidávejte komponenty
+3. Nastavte vhodné prahy
+4. Pravidelná revize konfigurace
+5. Sledujte velikosti log souborů
 
+## 🛑 Řešení Problémů
 
+Běžné problémy a řešení:
+1. Problémy s připojením
+2. Problémy s výkonem
+3. Chyby konfigurace
+
+Podrobný průvodce řešením problémů naleznete v [mq_monitor_v3.txt](mq_monitor_v3.txt) 
